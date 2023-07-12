@@ -5,9 +5,13 @@
 	TSMS_COMPILER_TOKEN_TYPE type; \
 	pString value;
 
-#define TSMS_EXTEND_COMPILER_SPLITED_TOKEN \
+#define TSMS_EXTEND_COMPILER_SPLITTED_TOKEN \
 	TSMS_EXTEND_COMPILER_TOKEN \
-	TSMS_LP children;
+	TSMS_LP children; \
+	pCompilerSplittedToken parent;
+
+#define TSMS_EXTEND_COMPILER_SENTENCE \
+	TSMS_LP rvalue;
 
 typedef struct TSMS_COMPILER tCompiler;
 typedef tCompiler* pCompiler;
@@ -18,8 +22,8 @@ typedef tCompilerPreProgram* pCompilerPreProgram;
 typedef struct TSMS_COMPILER_TOKEN tCompilerToken;
 typedef tCompilerToken* pCompilerToken;
 
-typedef struct TSMS_COMPILER_SPLITED_TOKEN tCompilerSplitedToken;
-typedef tCompilerSplitedToken* pCompilerSplitedToken;
+typedef struct TSMS_COMPILER_SPLITTED_TOKEN tCompilerSplittedToken;
+typedef tCompilerSplittedToken* pCompilerSplittedToken;
 
 typedef struct TSMS_COMPILER_BLOCK_TOKEN tCompilerBlockToken;
 typedef tCompilerBlockToken* pCompilerBlockToken;
@@ -32,8 +36,14 @@ typedef tCompilerProgram* pCompilerProgram;
 
 typedef struct TSMS_COMPILER_TOKEN_DEFINITION tCompilerTokenDefinition;
 
-typedef struct TSMS_COMPILER_TOKEN_SENTENCE tCompilerTokenSentence;
-typedef tCompilerTokenSentence* pCompilerTokenSentence;
+typedef struct TSMS_COMPILER_SENTENCE tCompilerSentence;
+typedef tCompilerSentence* pCompilerSentence;
+
+typedef struct TSMS_COMPILER_ASSIGNMENT_SENTENCE tCompilerAssignmentSentence;
+typedef tCompilerAssignmentSentence* pCompilerAssignmentSentence;
+
+typedef struct TSMS_COMPILER_BLOCK_SENTENCE tCompilerBlockSentence;
+typedef tCompilerBlockSentence* pCompilerBlockSentence;
 
 typedef enum {
 	TSMS_COMPILER_TOKEN_TYPE_BLOCK,
@@ -41,10 +51,11 @@ typedef enum {
 	TSMS_COMPILER_TOKEN_TYPE_STRING,
 	TSMS_COMPILER_TOKEN_TYPE_NUMBER,
 	TSMS_COMPILER_TOKEN_TYPE_KEYWORD,
-	TSMS_COMPILER_TOKEN_TYPE_UNDEFINED,
+	TSMS_COMPILER_TOKEN_TYPE_UNDEFINE,
 	TSMS_COMPILER_TOKEN_TYPE_MERGED_KEYWORD,
-	TSMS_COMPILER_TOKEN_TYPE_SPLITED,
-	TSMS_COMPILER_TOKEN_TYPE_DEFINE
+	TSMS_COMPILER_TOKEN_TYPE_SPLITTED,
+	TSMS_COMPILER_TOKEN_TYPE_DEFINE,
+	TSMS_COMPILER_TOKEN_TYPE_COMMENT
 } TSMS_COMPILER_TOKEN_TYPE;
 
 #include "tsms.h"
@@ -62,22 +73,21 @@ struct TSMS_COMPILER_TOKEN {
 	TSMS_EXTEND_COMPILER_TOKEN
 };
 
-struct TSMS_COMPILER_SPLITED_TOKEN {
-	TSMS_EXTEND_COMPILER_SPLITED_TOKEN
+struct TSMS_COMPILER_SPLITTED_TOKEN {
+	TSMS_EXTEND_COMPILER_SPLITTED_TOKEN
 };
 
 struct TSMS_COMPILER_BLOCK_TOKEN {
-	TSMS_EXTEND_COMPILER_SPLITED_TOKEN
-	pCompilerBlockToken parent;
+	TSMS_EXTEND_COMPILER_SPLITTED_TOKEN
 };
 
 struct TSMS_COMPILER_DEFINE_TOKEN {
-	TSMS_EXTEND_COMPILER_SPLITED_TOKEN
+	TSMS_EXTEND_COMPILER_SPLITTED_TOKEN
 	TSMS_ILP blocks;
 };
 
 struct TSMS_COMPILER_PROGRAM {
-	pCompilerTokenSentence sentence;
+	pCompilerBlockSentence sentence;
 };
 
 struct TSMS_COMPILER_TOKEN_DEFINITION {
@@ -86,10 +96,17 @@ struct TSMS_COMPILER_TOKEN_DEFINITION {
 	bool isBlock;
 };
 
-struct TSMS_COMPILER_TOKEN_SENTENCE {
+struct TSMS_COMPILER_SENTENCE {
+	TSMS_EXTEND_COMPILER_SENTENCE
+};
+
+struct TSMS_COMPILER_ASSIGNMENT_SENTENCE {
+	TSMS_EXTEND_COMPILER_SENTENCE
 	TSMS_LP lvalue;
-	TSMS_LP rvalue;
-	TSMS_LP children;
+};
+
+struct TSMS_COMPILER_BLOCK_SENTENCE {
+	TSMS_EXTEND_COMPILER_SENTENCE
 };
 
 pCompiler TSMS_COMPILER_create();
@@ -98,13 +115,15 @@ pCompilerPreProgram TSMS_COMPILER_compile(pCompiler compiler, pString source);
 
 TSMS_RESULT TSMS_COMPILER_release(pCompiler compiler);
 
-TSMS_RESULT TSMS_COMPILER_PROGRAM_release(pCompilerPreProgram program);
+TSMS_RESULT TSMS_COMPILER_PRE_PROGRAM_release(pCompilerPreProgram program);
 
 TSMS_RESULT TSMS_COMPILER_TOKEN_release(pCompilerToken token);
 
 TSMS_RESULT TSMS_COMPILER_TOKEN_releaseByType(pCompilerToken token);
 
-TSMS_RESULT TSMS_COMPILER_SPLITED_TOKEN_release(pCompilerSplitedToken token);
+TSMS_RESULT TSMS_COMPILER_SPLITTED_TOKEN_release(pCompilerSplittedToken token);
+
+TSMS_RESULT TSMS_COMPILER_BLOCK_TOKEN_release(pCompilerBlockToken token);
 
 TSMS_RESULT TSMS_COMPILER_DEFINE_TOKEN_release(pCompilerDefineToken token);
 
