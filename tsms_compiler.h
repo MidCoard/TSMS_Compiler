@@ -11,7 +11,8 @@
 	pCompilerSplittedToken parent;
 
 #define TSMS_EXTEND_COMPILER_SENTENCE \
-	TSMS_LP rvalue;
+	TSMS_LP rvalue;                      \
+	TSMS_COMPILER_SENTENCE_TYPE type;
 
 typedef struct TSMS_COMPILER tCompiler;
 typedef tCompiler* pCompiler;
@@ -45,22 +46,34 @@ typedef tCompilerAssignmentSentence* pCompilerAssignmentSentence;
 typedef struct TSMS_COMPILER_BLOCK_SENTENCE tCompilerBlockSentence;
 typedef tCompilerBlockSentence* pCompilerBlockSentence;
 
+typedef struct TSMS_COMPILER_DEFINE_SENTENCE tCompilerDefineSentence;
+typedef tCompilerDefineSentence* pCompilerDefineSentence;
+
 typedef enum {
-	TSMS_COMPILER_TOKEN_TYPE_BLOCK,
-	TSMS_COMPILER_TOKEN_TYPE_CHAR,
-	TSMS_COMPILER_TOKEN_TYPE_STRING,
-	TSMS_COMPILER_TOKEN_TYPE_NUMBER,
-	TSMS_COMPILER_TOKEN_TYPE_KEYWORD,
-	TSMS_COMPILER_TOKEN_TYPE_UNDEFINE,
-	TSMS_COMPILER_TOKEN_TYPE_MERGED_KEYWORD,
-	TSMS_COMPILER_TOKEN_TYPE_SPLITTED,
-	TSMS_COMPILER_TOKEN_TYPE_DEFINE,
-	TSMS_COMPILER_TOKEN_TYPE_LINE_COMMENT,
-	TSMS_COMPILER_TOKEN_TYPE_BLOCK_COMMENT
+	TSMS_COMPILER_TOKEN_TYPE_BLOCK = 1,
+	TSMS_COMPILER_TOKEN_TYPE_CHAR = 2,
+	TSMS_COMPILER_TOKEN_TYPE_STRING = 4,
+	TSMS_COMPILER_TOKEN_TYPE_NUMBER = 8,
+	TSMS_COMPILER_TOKEN_TYPE_KEYWORD = 16,
+	TSMS_COMPILER_TOKEN_TYPE_UNDEFINE = 32,
+	TSMS_COMPILER_TOKEN_TYPE_MERGED_KEYWORD = 64,
+	TSMS_COMPILER_TOKEN_TYPE_SPLITTED = 128,
+	TSMS_COMPILER_TOKEN_TYPE_DEFINE = 256,
+	TSMS_COMPILER_TOKEN_TYPE_LINE_COMMENT = 512,
+	TSMS_COMPILER_TOKEN_TYPE_BLOCK_COMMENT = 1024
 } TSMS_COMPILER_TOKEN_TYPE;
+
+typedef enum {
+	TSMS_COMPILER_SENTENCE_TYPE_ASSIGNMENT,
+	TSMS_COMPILER_SENTENCE_TYPE_BLOCK,
+	TSMS_COMPILER_SENTENCE_TYPE_RVALUE,
+	TSMS_COMPILER_SENTENCE_TYPE_DEFINE
+} TSMS_COMPILER_SENTENCE_TYPE;
 
 #include "tsms.h"
 #include "tsms_int_list.h"
+
+typedef bool (*TSMS_COMPILER_DEFINE_VALIDATOR)(TSMS_LP tokens, TSMS_POS index, tCompilerTokenDefinition * definition, TSMS_SIZE size);
 
 struct TSMS_COMPILER {
 	bool ignoreComment;
@@ -89,6 +102,7 @@ struct TSMS_COMPILER_DEFINE_TOKEN {
 
 struct TSMS_COMPILER_PROGRAM {
 	pCompilerBlockSentence sentence;
+	pCompilerBlockToken token;
 };
 
 struct TSMS_COMPILER_TOKEN_DEFINITION {
@@ -108,6 +122,12 @@ struct TSMS_COMPILER_ASSIGNMENT_SENTENCE {
 
 struct TSMS_COMPILER_BLOCK_SENTENCE {
 	TSMS_EXTEND_COMPILER_SENTENCE
+};
+
+struct TSMS_COMPILER_DEFINE_SENTENCE {
+	TSMS_EXTEND_COMPILER_SENTENCE
+	TSMS_ILP blocks;
+	pString name;
 };
 
 pCompiler TSMS_COMPILER_create();
@@ -134,10 +154,14 @@ TSMS_RESULT TSMS_COMPILER_PROGRAM_split(pCompilerPreProgram program, TSMS_COMPIL
 
 TSMS_RESULT TSMS_COMPILER_PROGRAM_define(pCompilerPreProgram program, pString value, tCompilerTokenDefinition * definition, TSMS_SIZE size);
 
+TSMS_RESULT TSMS_COMPILER_PROGRAM_defineWithCondition(pCompilerPreProgram program, pString value, tCompilerTokenDefinition * definition, TSMS_SIZE size, TSMS_COMPILER_DEFINE_VALIDATOR validator);
+
 TSMS_RESULT TSMS_COMPILER_PROGRAM_mergeKeyword(pCompilerPreProgram program, pString * keywords, TSMS_SIZE size);
 
 pCompilerProgram TSMS_COMPILER_PROGRAM_compile(pCompilerPreProgram program);
 
 TSMS_RESULT TSMS_COMPILER_PROGRAM_print(pCompilerPreProgram program);
+
+TSMS_RESULT TSMS_COMPILER_PROGRAM_release(pCompilerProgram program);
 
 #endif //TSMS_COMPILER_H
