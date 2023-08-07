@@ -73,7 +73,7 @@ typedef enum {
 #include "tsms.h"
 #include "tsms_int_list.h"
 
-typedef bool (*TSMS_COMPILER_DEFINE_VALIDATOR)(TSMS_LP tokens, TSMS_POS index, tCompilerTokenDefinition * definition, TSMS_SIZE size);
+typedef bool (*TSMS_COMPILER_DEFINE_VALIDATOR)(pCompilerSplittedToken token, TSMS_LP tokens, TSMS_POS index, tCompilerTokenDefinition * definition, TSMS_SIZE size);
 
 struct TSMS_COMPILER {
 	bool ignoreComment;

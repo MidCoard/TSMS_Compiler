@@ -4,7 +4,12 @@
 #include "tsms_int_stack.h"
 
 typedef enum {
-	_TOKEN_TYPE_KEYWORD, _TOKEN_TYPE_QUOTE, _TOKEN_TYPE_LITTLE_QUOTE, _TOKEN_TYPE_UNDEFINE, _TOKEN_TYPE_LINE_COMMENT, _TOKEN_TYPE_BLOCK_COMMENT
+	_TOKEN_TYPE_KEYWORD,
+	_TOKEN_TYPE_QUOTE,
+	_TOKEN_TYPE_LITTLE_QUOTE,
+	_TOKEN_TYPE_UNDEFINE,
+	_TOKEN_TYPE_LINE_COMMENT,
+	_TOKEN_TYPE_BLOCK_COMMENT
 } _tokenType;
 
 struct _token {
@@ -43,7 +48,8 @@ TSMS_INLINE pCompilerBlockToken __tsms_internal_create_block_token(pCompilerSpli
 	return token;
 }
 
-TSMS_INLINE pCompilerSplittedToken __tsms_internal_create_splitted_token(pCompilerSplittedToken parent, TSMS_LP tokens) {
+TSMS_INLINE pCompilerSplittedToken
+__tsms_internal_create_splitted_token(pCompilerSplittedToken parent, TSMS_LP tokens) {
 	pCompilerSplittedToken token = (pCompilerSplittedToken) TSMS_malloc(sizeof(tCompilerSplittedToken));
 	token->type = TSMS_COMPILER_TOKEN_TYPE_SPLITTED;
 	token->value = TSMS_NULL;
@@ -52,7 +58,9 @@ TSMS_INLINE pCompilerSplittedToken __tsms_internal_create_splitted_token(pCompil
 	return token;
 }
 
-TSMS_INLINE pCompilerDefineToken __tsms_internal_create_define_token(pCompilerSplittedToken parent, pString value, TSMS_LP tokens, TSMS_POS i, TSMS_SIZE size, tCompilerTokenDefinition* definition) {
+TSMS_INLINE pCompilerDefineToken
+__tsms_internal_create_define_token(pCompilerSplittedToken parent, pString value, TSMS_LP tokens, TSMS_POS i,
+                                    TSMS_SIZE size, tCompilerTokenDefinition *definition) {
 	pCompilerDefineToken token = (pCompilerDefineToken) TSMS_malloc(sizeof(tCompilerDefineToken));
 	token->type = TSMS_COMPILER_TOKEN_TYPE_DEFINE;
 	token->value = value;
@@ -94,7 +102,7 @@ TSMS_INLINE bool __tsms_internal_is_left_right_match(char left, char right) {
 	}
 }
 
-TSMS_INLINE bool __tsms_internal_is_in_array(pString* array, pString str, TSMS_SIZE size) {
+TSMS_INLINE bool __tsms_internal_is_in_array(pString *array, pString str, TSMS_SIZE size) {
 	for (TSMS_POS i = 0; i < size; i++)
 		if (TSMS_STRING_equals(array[i], str))
 			return true;
@@ -192,7 +200,7 @@ TSMS_INLINE void __tsms_internal_print_sentence(pCompilerSentence s, int level) 
 		__tsms_internal_print_space(level);
 		printf("define start: %s\n", sentence->name->cStr);
 		for (TSMS_POS i = 0; i < sentence->rvalue->length; i++) {
-			void* child = sentence->rvalue->list[i];
+			void *child = sentence->rvalue->list[i];
 			if (sentence->blocks->list[i])
 				__tsms_internal_print_sentence(child, level + 1);
 			else
@@ -219,7 +227,7 @@ TSMS_INLINE void __tsms_internal_remove_token(pCompilerToken t, TSMS_COMPILER_TO
 }
 
 TSMS_INLINE void __tsms_internal_split_token(pCompilerToken t, TSMS_COMPILER_TOKEN_TYPE type, pString value,
-                                        TSMS_COMPILER_TOKEN_TYPE splitType, pString splitValue) {
+                                             TSMS_COMPILER_TOKEN_TYPE splitType, pString splitValue) {
 	if (t->type == TSMS_COMPILER_TOKEN_TYPE_BLOCK || t->type == TSMS_COMPILER_TOKEN_TYPE_SPLITTED) {
 		pCompilerSplittedToken token = (pCompilerSplittedToken) t;
 		if (token->type == type && (value == TSMS_NULL || TSMS_STRING_equals(token->value, value))) {
@@ -229,7 +237,7 @@ TSMS_INLINE void __tsms_internal_split_token(pCompilerToken t, TSMS_COMPILER_TOK
 				pCompilerToken subChild = token->children->list[i];
 				if (subChild->type == splitType && TSMS_STRING_equals(subChild->value, splitValue)) {
 					if (current->length > 0) {
-						pCompilerToken newToken = __tsms_internal_create_splitted_token(token ,current);
+						pCompilerToken newToken = __tsms_internal_create_splitted_token(token, current);
 						current = TSMS_LIST_create(10);
 						TSMS_LIST_add(tokens, newToken);
 					}
@@ -300,7 +308,8 @@ TSMS_INLINE void __tsms_internal_split_token(pCompilerToken t, TSMS_COMPILER_TOK
 	}
 }
 
-TSMS_INLINE bool __tsms_internal_match_define(TSMS_LP tokens, TSMS_POS index, tCompilerTokenDefinition * definition, TSMS_SIZE size) {
+TSMS_INLINE bool
+__tsms_internal_match_define(TSMS_LP tokens, TSMS_POS index, tCompilerTokenDefinition *definition, TSMS_SIZE size) {
 	for (TSMS_POS i = 0; i < size; i++) {
 		pCompilerToken token = tokens->list[index + i];
 		if ((token->type & definition[i].type) == 0)
@@ -311,8 +320,11 @@ TSMS_INLINE bool __tsms_internal_match_define(TSMS_LP tokens, TSMS_POS index, tC
 	return true;
 }
 
-TSMS_INLINE void __tsms_internal_define_token(pCompilerToken t, pString value, tCompilerTokenDefinition * definition, TSMS_SIZE size, TSMS_COMPILER_DEFINE_VALIDATOR validator) {
-	if (t->type == TSMS_COMPILER_TOKEN_TYPE_BLOCK || t->type == TSMS_COMPILER_TOKEN_TYPE_SPLITTED || t->type == TSMS_COMPILER_TOKEN_TYPE_DEFINE) {
+TSMS_INLINE void
+__tsms_internal_define_token(pCompilerToken t, pString value, tCompilerTokenDefinition *definition, TSMS_SIZE size,
+                             TSMS_COMPILER_DEFINE_VALIDATOR validator) {
+	if (t->type == TSMS_COMPILER_TOKEN_TYPE_BLOCK || t->type == TSMS_COMPILER_TOKEN_TYPE_SPLITTED ||
+	    t->type == TSMS_COMPILER_TOKEN_TYPE_DEFINE) {
 		pCompilerSplittedToken token = (pCompilerSplittedToken) t;
 		TSMS_LP tokens = TSMS_LIST_create(10);
 		for (TSMS_POS i = 0; i < token->children->length; i++) {
@@ -324,9 +336,12 @@ TSMS_INLINE void __tsms_internal_define_token(pCompilerToken t, pString value, t
 					flag = false;
 			}
 			if (flag)
-				__tsms_internal_define_token(child, value, definition, size);
-			if (t->type != TSMS_COMPILER_TOKEN_TYPE_DEFINE && i + size < token->children->length + 1 && __tsms_internal_match_define(token->children, i, definition, size) && (validator == TSMS_NULL || validator(token->children, i, definition, size))) {
-				pCompilerToken newToken = __tsms_internal_create_define_token(token, value, token->children, i, size, definition);
+				__tsms_internal_define_token(child, value, definition, size, validator);
+			if (t->type != TSMS_COMPILER_TOKEN_TYPE_DEFINE && i + size < token->children->length + 1 &&
+			    __tsms_internal_match_define(token->children, i, definition, size) &&
+			    (validator == TSMS_NULL || validator(token, token->children, i, definition, size))) {
+				pCompilerToken newToken = __tsms_internal_create_define_token(token, value, token->children, i, size,
+				                                                              definition);
 				TSMS_LIST_add(tokens, newToken);
 				i += size - 1;
 			} else TSMS_LIST_add(tokens, child);
@@ -336,7 +351,7 @@ TSMS_INLINE void __tsms_internal_define_token(pCompilerToken t, pString value, t
 	}
 }
 
-TSMS_INLINE void __tsms_internal_merge_keyword(pCompilerToken t, pString * keywords, TSMS_SIZE size) {
+TSMS_INLINE void __tsms_internal_merge_keyword(pCompilerToken t, pString *keywords, TSMS_SIZE size) {
 	if (t->type == TSMS_COMPILER_TOKEN_TYPE_BLOCK) {
 		pCompilerBlockToken token = (pCompilerBlockToken) t;
 		TSMS_LP tokens = TSMS_LIST_create(10);
@@ -358,7 +373,8 @@ TSMS_INLINE void __tsms_internal_merge_keyword(pCompilerToken t, pString * keywo
 				}
 				if (value->length != 1 && __tsms_internal_is_in_array(keywords, value, size)) {
 					TSMS_COMPILER_TOKEN_release(child);
-					pCompilerToken newToken = __tsms_internal_create_token(TSMS_COMPILER_TOKEN_TYPE_MERGED_KEYWORD, value);
+					pCompilerToken newToken = __tsms_internal_create_token(TSMS_COMPILER_TOKEN_TYPE_MERGED_KEYWORD,
+					                                                       value);
 					TSMS_LIST_add(tokens, newToken);
 					for (TSMS_POS j = i + 1; j < pos; j++)
 						TSMS_COMPILER_TOKEN_release(token->children->list[j]);
@@ -395,7 +411,7 @@ TSMS_INLINE pCompilerToken __tsms_internal_clone_token(pCompilerToken t, pCompil
 			if (deep)
 				for (TSMS_POS i = 0; i < token->children->length; i++) {
 					pCompilerToken child = token->children->list[i];
-					TSMS_LIST_add(clone->children, __tsms_internal_clone_token(child, clone,  deep));
+					TSMS_LIST_add(clone->children, __tsms_internal_clone_token(child, clone, deep));
 				}
 			return clone;
 		}
@@ -417,7 +433,8 @@ TSMS_INLINE pCompilerToken __tsms_internal_clone_token(pCompilerToken t, pCompil
 			clone->children = TSMS_LIST_create(10);
 			for (TSMS_POS i = 0; i < token->children->length; i++) {
 				pCompilerToken child = token->children->list[i];
-				TSMS_LIST_add(clone->children, __tsms_internal_clone_token(child, clone, deep || token->blocks->list[i] != 1));
+				TSMS_LIST_add(clone->children,
+				              __tsms_internal_clone_token(child, clone, deep || token->blocks->list[i] != 1));
 			}
 			clone->blocks = TSMS_INT_LIST_create(10);
 			for (TSMS_POS i = 0; i < token->blocks->length; i++)
@@ -487,7 +504,8 @@ TSMS_INLINE pCompilerSplittedToken __tsms_internal_rebuild(pCompilerToken t, con
 TSMS_INLINE TSMS_POS __tsms_internal_find_assignment_mark(pCompilerSplittedToken token) {
 	for (TSMS_POS i = 0; i < token->children->length; i++) {
 		pCompilerToken child = token->children->list[i];
-		if (child->type == TSMS_COMPILER_TOKEN_TYPE_KEYWORD && TSMS_STRING_equals(child->value, TSMS_STRING_static("=")))
+		if (child->type == TSMS_COMPILER_TOKEN_TYPE_KEYWORD &&
+		    TSMS_STRING_equals(child->value, TSMS_STRING_static("=")))
 			return i;
 	}
 	return -1;
@@ -506,7 +524,8 @@ TSMS_INLINE pCompilerSentence __tsms_internal_compile_sentence(pCompilerSplitted
 			}
 			return sentence;
 		} else {
-			pCompilerAssignmentSentence sentence = (pCompilerAssignmentSentence) TSMS_malloc(sizeof(tCompilerAssignmentSentence));
+			pCompilerAssignmentSentence sentence = (pCompilerAssignmentSentence) TSMS_malloc(
+					sizeof(tCompilerAssignmentSentence));
 			sentence->type = TSMS_COMPILER_SENTENCE_TYPE_ASSIGNMENT;
 			sentence->lvalue = TSMS_LIST_create(10);
 			sentence->rvalue = TSMS_LIST_create(10);
@@ -526,7 +545,8 @@ TSMS_INLINE pCompilerSentence __tsms_internal_compile_sentence(pCompilerSplitted
 		sentence->rvalue = TSMS_LIST_create(10);
 		for (TSMS_POS i = 0; i < t->children->length; i++) {
 			pCompilerToken child = t->children->list[i];
-			if (child->type != TSMS_COMPILER_TOKEN_TYPE_BLOCK && child->type != TSMS_COMPILER_TOKEN_TYPE_SPLITTED && child->type != TSMS_COMPILER_TOKEN_TYPE_DEFINE) {
+			if (child->type != TSMS_COMPILER_TOKEN_TYPE_BLOCK && child->type != TSMS_COMPILER_TOKEN_TYPE_SPLITTED &&
+			    child->type != TSMS_COMPILER_TOKEN_TYPE_DEFINE) {
 				printf("error: unexpected t %d\n", child->type);
 			} else {
 				TSMS_LIST_add(sentence->rvalue, __tsms_internal_compile_sentence(child));
@@ -560,9 +580,9 @@ TSMS_INLINE pCompilerSentence __tsms_internal_compile_sentence(pCompilerSplitted
 TSMS_INLINE pCompilerProgram __tsms_internal_compile_token(pCompilerToken token) {
 	pCompilerProgram program = (pCompilerProgram) TSMS_malloc(sizeof(tCompilerProgram));
 	pCompilerBlockToken blockToken = __tsms_internal_rebuild(token, TSMS_NULL);
-//	__tsms_internal_print_token(blockToken, 0);
+	__tsms_internal_print_token(blockToken, 0);
 	program->sentence = __tsms_internal_compile_sentence(blockToken);
-	__tsms_internal_print_sentence(program->sentence, 0);
+//	__tsms_internal_print_sentence(program->sentence, 0);
 	program->token = blockToken;
 	return program;
 }
@@ -661,12 +681,14 @@ pCompilerPreProgram TSMS_COMPILER_compile(pCompiler compiler, pString source) {
 			inEscape = false;
 		} else if (inComment) {
 			if (!inBlockComment && c == '\n') {
-				TSMS_LIST_add(tokens, __tsms_internal_create_internal_token(_TOKEN_TYPE_LINE_COMMENT, TSMS_STRING_clone(comment)));
+				TSMS_LIST_add(tokens, __tsms_internal_create_internal_token(_TOKEN_TYPE_LINE_COMMENT,
+				                                                            TSMS_STRING_clone(comment)));
 				TSMS_STRING_clear(comment);
 				inComment = false;
 			} else if (inBlockComment && c == '*') {
 				if (i + 1 < trim->length && trim->cStr[i + 1] == '/') {
-					TSMS_LIST_add(tokens, __tsms_internal_create_internal_token(_TOKEN_TYPE_BLOCK_COMMENT, TSMS_STRING_clone(comment)));
+					TSMS_LIST_add(tokens, __tsms_internal_create_internal_token(_TOKEN_TYPE_BLOCK_COMMENT,
+					                                                            TSMS_STRING_clone(comment)));
 					TSMS_STRING_clear(comment);
 					inComment = false;
 					i++;
@@ -684,11 +706,9 @@ pCompilerPreProgram TSMS_COMPILER_compile(pCompiler compiler, pString source) {
 				inComment = true;
 				inBlockComment = trim->cStr[i + 1] == '*';
 				i++;
-			}
-			else
+			} else
 				TSMS_STRING_appendChar(temp, c);
-		}
-		else if (c == '"' && !inLittleQuote) {
+		} else if (c == '"' && !inLittleQuote) {
 			if (!inQuote) {
 				if (temp->length > 0) {
 					TSMS_LIST_add(tokens,
@@ -750,7 +770,8 @@ pCompilerPreProgram TSMS_COMPILER_compile(pCompiler compiler, pString source) {
 	TSMS_STRING_release(temp);
 
 	if (comment->length > 0) {
-		TSMS_LIST_add(tokens, __tsms_internal_create_internal_token(inBlockComment ? _TOKEN_TYPE_BLOCK_COMMENT : _TOKEN_TYPE_LINE_COMMENT, TSMS_STRING_clone(comment)));
+		TSMS_LIST_add(tokens, __tsms_internal_create_internal_token(
+				inBlockComment ? _TOKEN_TYPE_BLOCK_COMMENT : _TOKEN_TYPE_LINE_COMMENT, TSMS_STRING_clone(comment)));
 		TSMS_STRING_clear(comment);
 	}
 	TSMS_STRING_release(comment);
@@ -788,7 +809,8 @@ pCompilerPreProgram TSMS_COMPILER_compile(pCompiler compiler, pString source) {
 			char c = value->cStr[0];
 			if (__tsms_internal_is_left_bracket(c)) {
 				TSMS_INT_STACK_push(stack, c);
-				pCompilerBlockToken newToken = __tsms_internal_create_block_token(currentToken, TSMS_STRING_clone(value));
+				pCompilerBlockToken newToken = __tsms_internal_create_block_token(currentToken,
+				                                                                  TSMS_STRING_clone(value));
 				TSMS_LIST_add(currentToken->children, newToken);
 				currentToken = newToken;
 			} else if (__tsms_internal_is_right_bracket(c)) {
@@ -915,20 +937,24 @@ TSMS_RESULT TSMS_COMPILER_PROGRAM_split(pCompilerPreProgram program, TSMS_COMPIL
 	return TSMS_SUCCESS;
 }
 
-TSMS_RESULT TSMS_COMPILER_PROGRAM_define(pCompilerPreProgram program, pString value, tCompilerTokenDefinition * definition, TSMS_SIZE size) {
+TSMS_RESULT
+TSMS_COMPILER_PROGRAM_define(pCompilerPreProgram program, pString value, tCompilerTokenDefinition *definition,
+                             TSMS_SIZE size) {
 	if (program == TSMS_NULL)
 		return TSMS_ERROR;
 	return TSMS_COMPILER_PROGRAM_defineWithCondition(program, value, definition, size, TSMS_NULL);
 }
 
-TSMS_RESULT TSMS_COMPILER_PROGRAM_defineWithCondition(pCompilerPreProgram program, pString value, tCompilerTokenDefinition * definition, TSMS_SIZE size, TSMS_COMPILER_DEFINE_VALIDATOR validator) {
+TSMS_RESULT TSMS_COMPILER_PROGRAM_defineWithCondition(pCompilerPreProgram program, pString value,
+                                                      tCompilerTokenDefinition *definition, TSMS_SIZE size,
+                                                      TSMS_COMPILER_DEFINE_VALIDATOR validator) {
 	if (program == TSMS_NULL)
 		return TSMS_ERROR;
 	__tsms_internal_define_token(program->token, value, definition, size, validator);
 	return TSMS_SUCCESS;
 }
 
-TSMS_RESULT TSMS_COMPILER_PROGRAM_mergeKeyword(pCompilerPreProgram program, pString * keywords, TSMS_SIZE size) {
+TSMS_RESULT TSMS_COMPILER_PROGRAM_mergeKeyword(pCompilerPreProgram program, pString *keywords, TSMS_SIZE size) {
 	if (program == TSMS_NULL)
 		return TSMS_ERROR;
 	__tsms_internal_merge_keyword(program->token, keywords, size);
