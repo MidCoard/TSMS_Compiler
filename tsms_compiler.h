@@ -14,6 +14,11 @@
 	TSMS_LP rvalue;                      \
 	TSMS_COMPILER_SENTENCE_TYPE type;
 
+#define TSMS_EXTEND_COMPILER_BLOCK_SENTENCE \
+	TSMS_LP rvalue;                      \
+	TSMS_COMPILER_SENTENCE_TYPE type;          \
+	pString name;
+
 typedef struct TSMS_COMPILER tCompiler;
 typedef tCompiler* pCompiler;
 
@@ -64,7 +69,7 @@ typedef enum {
 } TSMS_COMPILER_TOKEN_TYPE;
 
 typedef enum {
-	TSMS_COMPILER_SENTENCE_TYPE_ASSIGNMENT,
+	TSMS_COMPILER_SENTENCE_TYPE_ASSIGNMENT = 0,
 	TSMS_COMPILER_SENTENCE_TYPE_BLOCK,
 	TSMS_COMPILER_SENTENCE_TYPE_RVALUE,
 	TSMS_COMPILER_SENTENCE_TYPE_DEFINE
@@ -122,13 +127,12 @@ struct TSMS_COMPILER_ASSIGNMENT_SENTENCE {
 };
 
 struct TSMS_COMPILER_BLOCK_SENTENCE {
-	TSMS_EXTEND_COMPILER_SENTENCE
+	TSMS_EXTEND_COMPILER_BLOCK_SENTENCE
 };
 
 struct TSMS_COMPILER_DEFINE_SENTENCE {
-	TSMS_EXTEND_COMPILER_SENTENCE
+	TSMS_EXTEND_COMPILER_BLOCK_SENTENCE
 	TSMS_ILP blocks;
-	pString name;
 };
 
 pCompiler TSMS_COMPILER_create();
@@ -164,5 +168,7 @@ pCompilerProgram TSMS_COMPILER_PROGRAM_compile(pCompilerPreProgram program);
 TSMS_RESULT TSMS_COMPILER_PROGRAM_print(pCompilerPreProgram program);
 
 TSMS_RESULT TSMS_COMPILER_PROGRAM_release(pCompilerProgram program);
+
+pString TSMS_COMPILER_PROGRAM_generate(pCompilerProgram program);
 
 #endif //TSMS_COMPILER_H

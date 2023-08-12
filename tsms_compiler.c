@@ -103,6 +103,16 @@ TSMS_INLINE bool __tsms_internal_is_left_right_match(char left, char right) {
 	}
 }
 
+TSMS_INLINE pString __tsms_internal_get_right(pString left) {
+	if (TSMS_STRING_equals(left, TSMS_STRING_static("(")))
+		return TSMS_STRING_static(")");
+	if (TSMS_STRING_equals(left, TSMS_STRING_static("[")))
+		return TSMS_STRING_static("]");
+	if (TSMS_STRING_equals(left, TSMS_STRING_static("{")))
+		return TSMS_STRING_static("}");
+	return TSMS_NULL;
+}
+
 TSMS_INLINE bool __tsms_internal_is_in_array(pString *array, pString str, TSMS_SIZE size) {
 	for (TSMS_POS i = 0; i < size; i++)
 		if (TSMS_STRING_equals(array[i], str))
@@ -345,6 +355,7 @@ __tsms_internal_define_token(pCompilerToken t, pString value, tCompilerTokenDefi
 				                                                              definition, seperate);
 				TSMS_LIST_add(tokens, newToken);
 				i += size - 1;
+				// todo fix me
 			} else TSMS_LIST_add(tokens, child);
 		}
 		TSMS_LIST_release(token->children);
@@ -547,6 +558,7 @@ TSMS_INLINE pCompilerSentence __tsms_internal_compile_sentence(pCompilerSplitTok
 		pCompilerBlockSentence sentence = (pCompilerBlockSentence) TSMS_malloc(sizeof(tCompilerBlockSentence));
 		sentence->type = TSMS_COMPILER_SENTENCE_TYPE_BLOCK;
 		sentence->rvalue = TSMS_LIST_create(10);
+		sentence->name = t->value;
 		for (TSMS_POS i = 0; i < t->children->length; i++) {
 			pCompilerToken child = t->children->list[i];
 			if (child->type != TSMS_COMPILER_TOKEN_TYPE_BLOCK && child->type != TSMS_COMPILER_TOKEN_TYPE_SPLIT &&
@@ -657,6 +669,135 @@ TSMS_INLINE void __tsms_internal_release_sentence(pCompilerSentence s) {
 		}
 	}
 	free(s);
+}
+
+TSMS_INLINE void __tsms_internal_generate(pCompilerBlockSentence sentence, pString generated);
+
+TSMS_INLINE void __tsms_internal_generate_token(pCompilerToken t, pString generated) {
+	switch (t->type) {
+		case TSMS_COMPILER_TOKEN_TYPE_BLOCK: {
+			pCompilerBlockToken blockToken = (pCompilerBlockToken) t;
+			TSMS_STRING_append(generated, blockToken->value);
+			if (TSMS_STRING_equals(blockToken->value, TSMS_STRING_static("{")))
+				TSMS_STRING_append(generated, TSMS_STRING_static("\n"));
+			for (TSMS_POS i = 0; i < blockToken->children->length; i++) {
+				pCompilerToken child = blockToken->children->list[i];
+				__tsms_internal_generate_token(child, generated);
+				if (i != blockToken->children->length - 1)
+					TSMS_STRING_append(generated, TSMS_STRING_static(" "));
+			}
+			TSMS_STRING_append(generated, __tsms_internal_get_right(blockToken->value));
+			if (TSMS_STRING_equals(blockToken->value, TSMS_STRING_static("{")))
+				TSMS_STRING_append(generated, TSMS_STRING_static("\n"));
+			break;
+		}
+		case TSMS_COMPILER_TOKEN_TYPE_SPLIT: {
+			pCompilerSplitToken splitToken = (pCompilerSplitToken) t;
+			for (TSMS_POS i = 0; i < splitToken->children->length; i++) {
+				pCompilerToken child = splitToken->children->list[i];
+				__tsms_internal_generate_token(child, generated);
+				if (i != splitToken->children->length - 1)
+					TSMS_STRING_append(generated, TSMS_STRING_static(" "));
+			}
+			TSMS_STRING_append(generated, TSMS_STRING_static(";\n"));
+			break;
+		}
+		case TSMS_COMPILER_TOKEN_TYPE_DEFINE: {
+			pCompilerDefineToken defineToken = (pCompilerDefineToken) t;
+			for (TSMS_POS i = 0; i < defineToken->children->length; i++) {
+				pCompilerToken child = defineToken->children->list[i];
+				__tsms_internal_generate_token(child, generated);
+				if (i != defineToken->children->length - 1)
+					TSMS_STRING_append(generated, TSMS_STRING_static(" "));
+			}
+			break;
+		}
+		case TSMS_COMPILER_TOKEN_TYPE_CHAR: {
+			TSMS_STRING_append(generated, TSMS_STRING_static("'"));
+			pString escaped = TSMS_STRING_escape(t->value);
+			TSMS_STRING_append(generated, escaped);
+			TSMS_STRING_release(escaped);
+			TSMS_STRING_append(generated, TSMS_STRING_static("'"));
+			break;
+		}
+		case TSMS_COMPILER_TOKEN_TYPE_STRING: {
+			TSMS_STRING_append(generated, TSMS_STRING_static("\""));
+			pString escaped = TSMS_STRING_escape(t->value);
+			TSMS_STRING_append(generated, escaped);
+			TSMS_STRING_release(escaped);
+			TSMS_STRING_append(generated, TSMS_STRING_static("\""));
+			break;
+		}
+		case TSMS_COMPILER_TOKEN_TYPE_NUMBER:
+		case TSMS_COMPILER_TOKEN_TYPE_KEYWORD:
+		case TSMS_COMPILER_TOKEN_TYPE_UNDEFINE:
+		case TSMS_COMPILER_TOKEN_TYPE_MERGED_KEYWORD:{
+			TSMS_STRING_append(generated, t->value);
+			break;
+		}
+	}
+}
+
+TSMS_INLINE void __tsms_internal_generate(pCompilerBlockSentence sentence, pString generated) {
+	TSMS_STRING_append(generated, sentence->name);
+	TSMS_STRING_append(generated, TSMS_STRING_static("\n"));
+	for (TSMS_POS i = 0; i < sentence->rvalue->length; i++) {
+		pCompilerSentence child = sentence->rvalue->list[i];
+		switch (child->type) {
+			case TSMS_COMPILER_SENTENCE_TYPE_ASSIGNMENT: {
+				pCompilerAssignmentSentence assignment = (pCompilerAssignmentSentence) child;
+				for (TSMS_POS j = 0;j < assignment->lvalue->length;j++) {
+					pCompilerToken t = assignment->lvalue->list[j];
+					__tsms_internal_generate_token(t, generated);
+					if (j != assignment->lvalue->length - 1)
+						TSMS_STRING_append(generated, TSMS_STRING_static(" "));
+				}
+				TSMS_STRING_append(generated, TSMS_STRING_static(" = "));
+				for (TSMS_POS j = 0;j < assignment->rvalue->length;j++) {
+					pCompilerToken t = assignment->rvalue->list[j];
+					__tsms_internal_generate_token(t, generated);
+					if (j != assignment->rvalue->length - 1)
+						TSMS_STRING_append(generated, TSMS_STRING_static(" "));
+				}
+				TSMS_STRING_append(generated, TSMS_STRING_static(";\n"));
+				break;
+			}
+			case TSMS_COMPILER_SENTENCE_TYPE_BLOCK: {
+				pCompilerBlockSentence block = (pCompilerBlockSentence) child;
+				__tsms_internal_generate(block, generated);
+				break;
+			}
+			case TSMS_COMPILER_SENTENCE_TYPE_RVALUE: {
+				pCompilerSentence rvalue = (pCompilerSentence) child;
+				for (TSMS_POS j = 0;j < rvalue->rvalue->length;j++) {
+					pCompilerToken t = rvalue->rvalue->list[j];
+					__tsms_internal_generate_token(t, generated);
+					if (j != rvalue->rvalue->length - 1)
+						TSMS_STRING_append(generated, TSMS_STRING_static(" "));
+				}
+				TSMS_STRING_append(generated, TSMS_STRING_static(";\n"));
+				break;
+			}
+			case TSMS_COMPILER_SENTENCE_TYPE_DEFINE: {
+				pCompilerDefineSentence define = (pCompilerDefineSentence) child;
+				for (TSMS_POS j = 0;j < define->rvalue->length;j++) {
+					int block = define->blocks->list[j];
+					if (!block) {
+						pCompilerToken t = define->rvalue->list[j];
+						__tsms_internal_generate_token(t, generated);
+						TSMS_STRING_append(generated, TSMS_STRING_static(" "));
+					} else {
+						pCompilerBlockSentence blockSentence = define->rvalue->list[j];
+						__tsms_internal_generate(blockSentence, generated);
+					}
+				}
+				TSMS_STRING_append(generated, TSMS_STRING_static("\n"));
+				break;
+			}
+		}
+	}
+	TSMS_STRING_append(generated, __tsms_internal_get_right(sentence->name));
+	TSMS_STRING_append(generated, TSMS_STRING_static("\n"));
 }
 
 pCompiler TSMS_COMPILER_create() {
@@ -1018,4 +1159,12 @@ TSMS_RESULT TSMS_COMPILER_PROGRAM_release(pCompilerProgram program) {
 	TSMS_COMPILER_BLOCK_TOKEN_release(program->token);
 	free(program);
 	return TSMS_SUCCESS;
+}
+
+pString TSMS_COMPILER_PROGRAM_generate(pCompilerProgram program) {
+	if (program == TSMS_NULL)
+		return TSMS_NULL;
+	pString ret = TSMS_STRING_create();
+	__tsms_internal_generate(program->sentence, ret);
+	return ret;
 }
