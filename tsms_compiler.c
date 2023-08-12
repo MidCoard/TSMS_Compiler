@@ -473,16 +473,17 @@ TSMS_INLINE pCompilerSplitToken __tsms_internal_rebuild(pCompilerToken t, const 
 	} else if (t->type == TSMS_COMPILER_TOKEN_TYPE_SPLIT) {
 		pCompilerSplitToken token = (pCompilerSplitToken) t;
 		pCompilerSplitToken split = parent;
-		if (parent->type != TSMS_COMPILER_TOKEN_TYPE_SPLIT)
+		if (parent == TSMS_NULL || parent->type != TSMS_COMPILER_TOKEN_TYPE_SPLIT)
 			split = __tsms_internal_create_split_token(parent, TSMS_LIST_create(10));
 		for (TSMS_POS i = 0; i < token->children->length; i++) {
 			pCompilerToken child = token->children->list[i];
 			__tsms_internal_rebuild(child, split);
 		}
-		if (parent->type != TSMS_COMPILER_TOKEN_TYPE_SPLIT) {
-			if (split->children->length != 0)
-				TSMS_LIST_add(parent->children, split);
-			else TSMS_COMPILER_SPLIT_TOKEN_release(split);
+		if (parent == TSMS_NULL || parent->type != TSMS_COMPILER_TOKEN_TYPE_SPLIT) {
+			if (parent != TSMS_NULL)
+				if (split->children->length != 0)
+					TSMS_LIST_add(parent->children, split);
+				else TSMS_COMPILER_SPLIT_TOKEN_release(split);
 		}
 	} else if (t->type == TSMS_COMPILER_TOKEN_TYPE_DEFINE) {
 		pCompilerDefineToken token = (pCompilerDefineToken) t;
@@ -495,8 +496,9 @@ TSMS_INLINE pCompilerSplitToken __tsms_internal_rebuild(pCompilerToken t, const 
 				clone->children->list[i] = temp;
 			}
 		}
-
-		TSMS_LIST_add(__tsms_internal_find_block_token(parent)->children, clone);
+		if (parent != TSMS_NULL)
+			TSMS_LIST_add(__tsms_internal_find_block_token(parent)->children, clone);
+		else return (pCompilerSplitToken) clone;
 	} else {
 		TSMS_LIST_add(parent->children, __tsms_internal_clone_token(t, parent, false));
 	}
