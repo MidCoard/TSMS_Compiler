@@ -80,6 +80,14 @@ typedef enum {
 
 typedef bool (*TSMS_COMPILER_DEFINE_VALIDATOR)(pCompilerSplitToken token, TSMS_LP tokens, TSMS_POS index, tCompilerTokenDefinition * definition, TSMS_SIZE size);
 
+typedef void (*TSMS_COMPILER_GENERATE_CALLBACK)(pCompilerDefineSentence sentence, pString generated);
+
+typedef void (*TSMS_COMPILER_GENERATE_HANDLER)(pCompilerDefineSentence sentence, pString generated, void* generator, void* defineGenerator);
+
+typedef void (*TSMS_COMPILER_DEFINE_GENERATOR)(pCompilerDefineSentence sentence, pString generated, TSMS_COMPILER_GENERATE_CALLBACK before, TSMS_COMPILER_GENERATE_CALLBACK after, TSMS_COMPILER_GENERATE_HANDLER between);
+typedef void (*TSMS_COMPILER_GENERATOR)(pCompilerToken token, pString generated);
+
+
 struct TSMS_COMPILER {
 	bool ignoreComment;
 };
@@ -133,6 +141,7 @@ struct TSMS_COMPILER_BLOCK_SENTENCE {
 struct TSMS_COMPILER_DEFINE_SENTENCE {
 	TSMS_EXTEND_COMPILER_BLOCK_SENTENCE
 	TSMS_ILP blocks;
+	bool seperate;
 };
 
 pCompiler TSMS_COMPILER_create();
@@ -170,5 +179,7 @@ TSMS_RESULT TSMS_COMPILER_PROGRAM_print(pCompilerPreProgram program);
 TSMS_RESULT TSMS_COMPILER_PROGRAM_release(pCompilerProgram program);
 
 pString TSMS_COMPILER_PROGRAM_generate(pCompilerProgram program);
+
+pString TSMS_COMPILER_PROGRAM_generateWithCondition(pCompilerProgram program, TSMS_COMPILER_GENERATE_CALLBACK before, TSMS_COMPILER_GENERATE_CALLBACK after, TSMS_COMPILER_GENERATE_HANDLER between);
 
 #endif //TSMS_COMPILER_H

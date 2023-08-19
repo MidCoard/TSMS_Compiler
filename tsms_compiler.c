@@ -262,9 +262,10 @@ TSMS_INLINE void __tsms_internal_split_token(pCompilerToken t, TSMS_COMPILER_TOK
 				}
 			}
 			if (current->length > 0) {
-				pCompilerToken newToken = __tsms_internal_create_split_token(token, current);
-				TSMS_LIST_add(tokens, newToken);
-			} else TSMS_LIST_release(current);
+				for (TSMS_POS j = 0; j < current->length; j++)
+					TSMS_LIST_add(tokens, current->list[j]);
+			}
+			TSMS_LIST_release(current);
 			TSMS_LIST_release(token->children);
 			token->children = tokens;
 		}
@@ -389,6 +390,8 @@ TSMS_INLINE void __tsms_internal_merge_keyword(pCompilerToken t, pString *keywor
 						break;
 					current = token->children->list[pos];
 					if (current->type != TSMS_COMPILER_TOKEN_TYPE_KEYWORD)
+						break;
+					if (__tsms_internal_is_in_array(keywords, value, size))
 						break;
 					TSMS_STRING_append(value, current->value);
 				}
@@ -572,7 +575,9 @@ TSMS_INLINE pCompilerSentence __tsms_internal_compile_sentence(pCompilerSplitTok
 			pCompilerToken child = t->children->list[i];
 			if (child->type != TSMS_COMPILER_TOKEN_TYPE_BLOCK && child->type != TSMS_COMPILER_TOKEN_TYPE_SPLIT &&
 			    child->type != TSMS_COMPILER_TOKEN_TYPE_DEFINE) {
-				printf("error: unexpected t %d\n", child->type);
+				if (child->value != TSMS_NULL)
+					printf("error: unexpected %d %s\n", child->type, child->value->cStr);
+				else printf("error: unexpected %d\n", child->type);
 			} else {
 				TSMS_LIST_add(sentence->rvalue, __tsms_internal_compile_sentence(child));
 			}
@@ -584,6 +589,7 @@ TSMS_INLINE pCompilerSentence __tsms_internal_compile_sentence(pCompilerSplitTok
 		sentence->type = TSMS_COMPILER_SENTENCE_TYPE_DEFINE;
 		sentence->rvalue = TSMS_LIST_create(10);
 		sentence->blocks = TSMS_LIST_create(10);
+		sentence->seperate = token->seperate;
 		sentence->name = TSMS_STRING_clone(token->value);
 		for (TSMS_POS i = 0; i < token->blocks->length; i++) {
 			int block = token->blocks->list[i];
@@ -635,8 +641,10 @@ TSMS_INLINE void __tsms_internal_rebuild0(pCompilerBlockToken t, TSMS_POS parent
 TSMS_INLINE pCompilerProgram __tsms_internal_compile_token(pCompilerToken token) {
 	pCompilerProgram program = (pCompilerProgram) TSMS_malloc(sizeof(tCompilerProgram));
 	pCompilerBlockToken blockToken = __tsms_internal_rebuild(token, TSMS_NULL);
+	__tsms_internal_print_token(blockToken, 0);
 	__tsms_internal_rebuild0(blockToken, 0, TSMS_NULL);
 	program->sentence = __tsms_internal_compile_sentence(blockToken);
+	__tsms_internal_print_sentence(program->sentence, 0);
 	program->token = blockToken;
 	return program;
 }
@@ -679,7 +687,7 @@ TSMS_INLINE void __tsms_internal_release_sentence(pCompilerSentence s) {
 	free(s);
 }
 
-TSMS_INLINE void __tsms_internal_generate(pCompilerBlockSentence sentence, pString generated);
+TSMS_INLINE void __tsms_internal_generate(pCompilerBlockSentence sentence, pString generated, TSMS_COMPILER_GENERATE_CALLBACK before, TSMS_COMPILER_GENERATE_CALLBACK after, TSMS_COMPILER_GENERATE_HANDLER between);
 
 TSMS_INLINE void __tsms_internal_generate_token(pCompilerToken t, pString generated) {
 	switch (t->type) {
@@ -746,7 +754,21 @@ TSMS_INLINE void __tsms_internal_generate_token(pCompilerToken t, pString genera
 	}
 }
 
-TSMS_INLINE void __tsms_internal_generate(pCompilerBlockSentence sentence, pString generated) {
+TSMS_INLINE void __tsms_internal_generate_define(pCompilerDefineSentence define, pString generated, TSMS_COMPILER_GENERATE_CALLBACK before, TSMS_COMPILER_GENERATE_CALLBACK after, void* between) {
+	for (TSMS_POS j = 0; j < define->rvalue->length; j++) {
+		int block = define->blocks->list[j];
+		if (!block) {
+			pCompilerToken t = define->rvalue->list[j];
+			__tsms_internal_generate_token(t, generated);
+			TSMS_STRING_append(generated, TSMS_STRING_static(" "));
+		} else {
+			pCompilerBlockSentence blockSentence = define->rvalue->list[j];
+			__tsms_internal_generate(blockSentence, generated, before, after, between);
+		}
+	}
+}
+
+TSMS_INLINE void __tsms_internal_generate(pCompilerBlockSentence sentence, pString generated, TSMS_COMPILER_GENERATE_CALLBACK before, TSMS_COMPILER_GENERATE_CALLBACK after, TSMS_COMPILER_GENERATE_HANDLER between) {
 	TSMS_STRING_append(generated, sentence->name);
 	TSMS_STRING_append(generated, TSMS_STRING_static("\n"));
 	for (TSMS_POS i = 0; i < sentence->rvalue->length; i++) {
@@ -772,7 +794,7 @@ TSMS_INLINE void __tsms_internal_generate(pCompilerBlockSentence sentence, pStri
 			}
 			case TSMS_COMPILER_SENTENCE_TYPE_BLOCK: {
 				pCompilerBlockSentence block = (pCompilerBlockSentence) child;
-				__tsms_internal_generate(block, generated);
+				__tsms_internal_generate(block, generated, before, after, between);
 				break;
 			}
 			case TSMS_COMPILER_SENTENCE_TYPE_RVALUE: {
@@ -788,18 +810,14 @@ TSMS_INLINE void __tsms_internal_generate(pCompilerBlockSentence sentence, pStri
 			}
 			case TSMS_COMPILER_SENTENCE_TYPE_DEFINE: {
 				pCompilerDefineSentence define = (pCompilerDefineSentence) child;
-				for (TSMS_POS j = 0;j < define->rvalue->length;j++) {
-					int block = define->blocks->list[j];
-					if (!block) {
-						pCompilerToken t = define->rvalue->list[j];
-						__tsms_internal_generate_token(t, generated);
-						TSMS_STRING_append(generated, TSMS_STRING_static(" "));
-					} else {
-						pCompilerBlockSentence blockSentence = define->rvalue->list[j];
-						__tsms_internal_generate(blockSentence, generated);
-					}
-				}
-				TSMS_STRING_append(generated, TSMS_STRING_static("\n"));
+				if (before != NULL)
+					before(define, generated);
+				if (between != NULL)
+					between(define, generated, __tsms_internal_generate_token, __tsms_internal_generate_define);
+				else
+					__tsms_internal_generate_define(define, generated, before, after, between);
+				if (after != NULL)
+					after(define, generated);
 				break;
 			}
 		}
@@ -1173,6 +1191,14 @@ pString TSMS_COMPILER_PROGRAM_generate(pCompilerProgram program) {
 	if (program == TSMS_NULL)
 		return TSMS_NULL;
 	pString ret = TSMS_STRING_create();
-	__tsms_internal_generate(program->sentence, ret);
+	__tsms_internal_generate(program->sentence, ret, TSMS_NULL, TSMS_NULL, TSMS_NULL);
+	return ret;
+}
+
+pString TSMS_COMPILER_PROGRAM_generateWithCondition(pCompilerProgram program, TSMS_COMPILER_GENERATE_CALLBACK before, TSMS_COMPILER_GENERATE_CALLBACK after, TSMS_COMPILER_GENERATE_HANDLER between) {
+	if (program == TSMS_NULL)
+		return TSMS_NULL;
+	pString ret = TSMS_STRING_create();
+	__tsms_internal_generate(program->sentence, ret, before, after, between);
 	return ret;
 }
