@@ -69,6 +69,11 @@ __tsms_internal_create_define_token(pCompilerSplitToken parent, pString value, T
 	token->parent = parent;
 	token->blocks = TSMS_INT_LIST_create(10);
 	for (TSMS_POS j = 0; j < size; j++) {
+		pCompilerToken tmp = tokens->list[i + j];
+		if (tmp->type == TSMS_COMPILER_TOKEN_TYPE_SPLIT || tmp->type == TSMS_COMPILER_TOKEN_TYPE_BLOCK || tmp->type == TSMS_COMPILER_TOKEN_TYPE_DEFINE) {
+			pCompilerSplitToken splitToken = (pCompilerSplitToken) tmp;
+			splitToken->parent = token;
+		}
 		TSMS_LIST_add(token->children, tokens->list[i + j]);
 		TSMS_INT_LIST_add(token->blocks, definition[j].isBlock ? 1 : 0);
 	}
@@ -351,8 +356,12 @@ __tsms_internal_define_token(pCompilerToken t, pString value, tCompilerTokenDefi
 			if (t->type != TSMS_COMPILER_TOKEN_TYPE_DEFINE && i + size < token->children->length + 1 &&
 			    __tsms_internal_match_define(token->children, i, definition, size) &&
 			    (validator == TSMS_NULL || validator(token, token->children, i, definition, size))) {
-				pCompilerToken newToken = __tsms_internal_create_define_token(token, value, token->children, i, size,
+				pCompilerDefineToken newToken = __tsms_internal_create_define_token(token, value, token->children, i, size,
 				                                                              definition, seperate);
+				for (TSMS_POS j = 0; j < size; j++)
+					if (newToken->blocks->list[j])
+						__tsms_internal_define_token((pCompilerToken) newToken->children->list[j], value, definition, size, validator,
+						                             seperate);
 				TSMS_LIST_add(tokens, newToken);
 				i += size - 1;
 				// todo fix me
@@ -628,7 +637,6 @@ TSMS_INLINE pCompilerProgram __tsms_internal_compile_token(pCompilerToken token)
 	pCompilerBlockToken blockToken = __tsms_internal_rebuild(token, TSMS_NULL);
 	__tsms_internal_rebuild0(blockToken, 0, TSMS_NULL);
 	program->sentence = __tsms_internal_compile_sentence(blockToken);
-	__tsms_internal_print_sentence(program->sentence, 0);
 	program->token = blockToken;
 	return program;
 }
